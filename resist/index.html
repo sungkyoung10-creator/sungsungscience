@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>저항의 연결 실험실</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+/* Layout: 실험대(회로) 크게 왼쪽 + 조작 패널 오른쪽, 아래에 기록표·그래프. 태블릿 가로 기준, 좁으면 한 줄로 쌓임 */
+:root{
+  --bg:#e9eeec; --surface:#ffffff; --bench:#f7faf8; --grid:#dfe7e4;
+  --ink:#1b2a2c; --muted:#5a6b6d; --line:#c9d4d1;
+  --accent:#12635c; --accent-soft:#d6ebe7;
+  --electron:#1f63d6; --current:#d2422c;
+  --wire:#3a4a4d; --metal:#9aa7aa; --metal-dark:#56636a;
+  --copper:#c97a2a; --cell:#2b3336; --holder:#d9dfdd;
+  --wood:#e8cf9f; --wood-edge:#b8975e; --nichrome:#d9822b; --nichrome-off:#b0a48c;
+  --glass:rgba(220,235,245,.35); --glass-edge:#8aa2ad;
+  --lcd:#13221f; --lcd-ink:#7cf0b5;
+  --f-display:"Do Hyeon","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121a1b; --surface:#1b2526; --bench:#162021; --grid:#213031;
+  --ink:#e4ecea; --muted:#9db0ae; --line:#334546;
+  --accent:#5cc4b6; --accent-soft:#1f3c3a;
+  --electron:#5b9bff; --current:#ff7a62;
+  --wire:#b7c4c6; --metal:#7f8d90; --metal-dark:#4a585c;
+  --copper:#d88f45; --cell:#0c1112; --holder:#2a3536;
+  --wood:#6b5634; --wood-edge:#8d7246; --nichrome:#f0994a; --nichrome-off:#7d735f;
+  --glass:rgba(160,190,210,.18); --glass-edge:#7d97a1;
+  --lcd:#0a1311; --lcd-ink:#7cf0b5; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#121a1b; --surface:#1b2526; --bench:#162021; --grid:#213031;
+  --ink:#e4ecea; --muted:#9db0ae; --line:#334546;
+  --accent:#5cc4b6; --accent-soft:#1f3c3a;
+  --electron:#5b9bff; --current:#ff7a62;
+  --wire:#b7c4c6; --metal:#7f8d90; --metal-dark:#4a585c;
+  --copper:#d88f45; --cell:#0c1112; --holder:#2a3536;
+  --wood:#6b5634; --wood-edge:#8d7246; --nichrome:#f0994a; --nichrome-off:#7d735f;
+  --glass:rgba(160,190,210,.18); --glass-edge:#7d97a1;
+  --lcd:#0a1311; --lcd-ink:#7cf0b5; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 32px;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.wrap{max-width:1360px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 20px}
+h1{font-family:var(--f-display);font-weight:400;font-size:clamp(28px,3.4vw,40px);margin:0;line-height:1.1;text-wrap:balance}
+.sub{color:var(--muted);margin:2px 0 0;font-size:14px}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:4px;gap:4px}
+.seg button{font:inherit;font-weight:700;font-size:16px;border:0;background:transparent;color:var(--muted);padding:10px 18px;border-radius:10px;cursor:pointer;min-height:46px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+.seg button:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--electron);outline-offset:2px}
+
+.main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;align-items:start}
+@media (max-width:960px){.main{grid-template-columns:1fr}}
+.stage{background:var(--bench);border:1px solid var(--line);border-radius:18px;overflow:hidden;position:relative;min-width:0;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:28px 28px}
+.stage svg{display:block;width:100%;height:auto;max-width:100%;user-select:none;-webkit-user-select:none}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;padding:10px 16px;border-top:1px solid var(--line);background:var(--surface);font-size:14px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--electron);display:inline-grid;place-items:center;color:#fff;font-size:12px;line-height:1;font-weight:700}
+.arr{color:var(--current);font-weight:700}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.meters{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.meter{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.meter.big{grid-column:1 / -1;background:var(--lcd);border-color:var(--lcd)}
+.meter .k{font-size:13px;color:var(--muted);letter-spacing:.02em}
+.meter.big .k{color:var(--lcd-ink);opacity:.75}
+.meter .v{font-family:var(--f-mono);font-weight:600;font-size:26px;font-variant-numeric:tabular-nums;line-height:1.15}
+.meter.big .v{font-size:44px;color:var(--lcd-ink)}
+.meter .v small{font-size:.55em;margin-left:4px;font-weight:500}
+
+.ctl{display:flex;flex-direction:column;gap:8px}
+.ctl-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ctl-head b{font-size:17px}
+.ctl-head output{font-family:var(--f-mono);font-weight:600;font-size:18px;color:var(--accent);font-variant-numeric:tabular-nums}
+.ctl .hint{font-size:13px;color:var(--muted);margin:0}
+.row{display:flex;align-items:center;gap:8px}
+.step{flex:none;width:46px;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--bench);color:var(--ink);font-size:24px;font-weight:700;cursor:pointer;display:grid;place-items:center}
+.step:active{background:var(--accent-soft)}
+input[type=range]{flex:1;min-width:0;-webkit-appearance:none;appearance:none;height:46px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:10px;border-radius:6px;background:var(--accent-soft)}
+input[type=range]::-moz-range-track{height:10px;border-radius:6px;background:var(--accent-soft)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:32px;border-radius:50%;background:var(--accent);border:4px solid var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.3);margin-top:-11px}
+input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:var(--accent);border:4px solid var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+
+.toggles{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:inherit;font-size:14px;font-weight:500;border:1px solid var(--line);background:var(--bench);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:42px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:700}
+.btn{font:inherit;font-weight:700;font-size:16px;border:0;border-radius:12px;padding:12px 16px;min-height:50px;background:var(--accent);color:var(--surface);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:500;font-size:14px;min-height:42px;padding:8px 12px}
+.btn.danger{background:var(--current);color:#fff;font-size:14px;min-height:42px;padding:8px 12px}
+
+.lab{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:14px}
+@media (max-width:860px){.lab{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px 18px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.card h2{font-family:var(--f-display);font-weight:400;font-size:24px;margin:0}
+.card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.tbl{overflow:auto;max-height:300px;border:1px solid var(--line);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{position:sticky;top:0;background:var(--bench);font-size:13px;color:var(--muted);font-weight:500}
+th:first-child,td:first-child{text-align:left;color:var(--muted)}
+td{font-family:var(--f-mono)}
+td.i{color:var(--accent);font-weight:600}
+.empty{color:var(--muted);text-align:center;padding:24px 10px;font-family:var(--f-body)}
+.graph svg{width:100%;height:auto;display:block}
+.graph .ax{stroke:var(--ink);stroke-width:1.5}
+.graph .gl{stroke:var(--line);stroke-width:1}
+.graph text{fill:var(--muted);font-size:12px;font-family:var(--f-mono)}
+.graph text.t{fill:var(--ink);font-family:var(--f-body);font-size:13px;font-weight:500}
+.qs{margin:0;padding-left:20px;color:var(--ink);display:flex;flex-direction:column;gap:4px}
+.qs li::marker{color:var(--accent);font-weight:700}
+.confirm{display:flex;gap:6px;align-items:center;font-size:14px;color:var(--muted)}
+footer{font-size:12px;color:var(--muted)}
+
+/* 태블릿 가로: 스크롤 없이 한 화면 */
+@media (orientation:landscape) and (min-width:600px){
+  html,body{height:100%}
+  body{margin:0;padding-block:12px;overflow:hidden}
+  .wrap{height:100%;max-width:none;gap:10px}
+  header{flex:none}
+  h1{font-size:clamp(24px,3vw,34px)}
+  .main{flex:1;min-height:0;grid-template-columns:minmax(0,1fr) clamp(280px,27vw,340px);align-items:stretch}
+  .stage{display:flex;flex-direction:column;min-height:0}
+  .stage svg{flex:1;min-height:0;width:100%;height:100%}
+  .panel{min-height:0;overflow:auto;padding:14px;gap:12px;justify-content:space-between}
+  .meter.big .v{font-size:clamp(32px,4.2vh,44px)}
+  .meter .v{font-size:clamp(20px,3vh,26px)}
+  footer{flex:none}
+}
+@media (orientation:landscape) and (min-width:600px) and (max-height:700px){
+  header .sub,footer{display:none}
+  .ctl .hint{display:none}
+}
+.tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fs{font:inherit;font-weight:700;font-size:15px;display:inline-flex;align-items:center;gap:8px;min-height:46px;padding:0 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.fs svg{width:20px;height:20px;flex:none}
+.fs .ic-exit{display:none}
+.fs[aria-pressed="true"] .ic-enter{display:none}
+.fs[aria-pressed="true"] .ic-exit{display:block}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:calc(100% - 32px);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:12px;font-size:14px;z-index:20;text-align:center}
+.rotate{display:none;align-items:center;gap:8px;background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:10px 14px;font-size:14px;font-weight:500}
+@media (orientation:portrait) and (max-width:600px){.rotate{display:flex}}
+/* 휴대폰 가로: 아주 낮은 화면에 맞춘 압축 배치 */
+@media (orientation:landscape) and (max-height:520px){
+  body{padding-block:max(6px,env(safe-area-inset-top,0px)) max(6px,env(safe-area-inset-bottom,0px))}
+  .wrap{gap:6px}
+  header{flex-wrap:nowrap;align-items:center;gap:8px}
+  header .sub,footer,.ctl .hint{display:none}
+  h1{font-size:18px;white-space:nowrap}
+  .seg{padding:3px;border-radius:10px;gap:2px}
+  .seg button{font-size:13px;min-height:34px;padding:4px 10px;border-radius:8px}
+  .fs{min-height:34px;font-size:13px;padding:0 10px;border-radius:10px}
+  .fs .lbl{display:none}
+  .main{gap:8px;grid-template-columns:minmax(0,1fr) clamp(210px,30vw,270px)}
+  .stage{border-radius:12px}
+  .legend{padding:3px 10px;font-size:11px;gap:2px 12px}
+  .legend span:last-child{display:none}
+  .dot{width:11px;height:11px;font-size:9px}
+  .panel{padding:8px;gap:6px;border-radius:12px;justify-content:flex-start}
+  .meters{gap:5px}
+  .meter{padding:3px 8px;border-radius:8px;gap:0}
+  .meter .k{font-size:11px}
+  .meter.big .v{font-size:26px}
+  .meter .v{font-size:17px}
+  .ctl{gap:0}
+  .ctl-head b{font-size:13px}
+  .ctl-head output{font-size:13px}
+  .step{width:36px;height:36px;font-size:20px;border-radius:9px}
+  input[type=range]{height:36px}
+  input[type=range]::-webkit-slider-thumb{width:26px;height:26px;margin-top:-8px}
+  .toggles{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+  .chip{font-size:12px;min-height:34px;padding:4px 2px;white-space:nowrap}
+  .meters{grid-template-columns:1.3fr 1fr 1fr}
+  .meter.big{grid-column:auto}
+  .meter.big .v{font-size:22px}
+  .meter .v{font-size:16px;margin-top:4px}
+}
+/* 가로 화면(태블릿·휴대폰 공통): 제목 없애고 회로를 화면 높이 전체로, 버튼은 오른쪽 위 */
+@media (orientation:landscape) and (min-width:600px), (orientation:landscape) and (max-height:520px){
+  .wrap{display:grid;grid-template-columns:minmax(0,1fr) clamp(280px,27vw,340px);grid-template-rows:auto minmax(0,1fr);
+    grid-template-areas:"stage tools" "stage panel";gap:10px 12px}
+  header,.main{display:contents}
+  header > div:first-child,.rotate,footer{display:none}
+  .tools{grid-area:tools;flex-wrap:nowrap;gap:8px;justify-content:space-between}
+  .seg{flex:1;min-width:0}
+  .seg button{flex:1;padding:8px 6px;font-size:15px;white-space:nowrap}
+  .fs .lbl{display:none}
+  .stage{grid-area:stage;min-height:0}
+  .panel{grid-area:panel;min-height:0}
+  .toggles{display:grid;grid-template-columns:repeat(3,1fr)}
+  .chip{padding-inline:4px;white-space:nowrap}
+}
+/* 휴대폰 가로 + 주소창: 더 촘촘하게 */
+@media (orientation:landscape) and (max-height:520px){
+  body{padding-block:max(4px,env(safe-area-inset-top,0px)) max(4px,env(safe-area-inset-bottom,0px))}
+  .wrap{display:grid;grid-template-columns:minmax(0,1fr) clamp(200px,29vw,260px);grid-template-rows:auto minmax(0,1fr);
+    grid-template-areas:"stage tools" "stage panel";gap:5px 6px}
+  header,.main{display:contents}
+  header > div:first-child,.rotate,footer{display:none}
+  .tools{grid-area:tools;flex-wrap:nowrap;gap:5px;justify-content:space-between}
+  .seg{flex:1;min-width:0}
+  .seg button{flex:1;padding:4px 6px;font-size:13px;min-height:34px}
+  .seg .long{display:none}
+  .stage{grid-area:stage;min-height:0;border-radius:10px}
+  .panel{grid-area:panel;min-height:0;padding:7px;gap:5px}
+  .step{width:32px;height:32px;font-size:18px}
+  input[type=range]{height:32px}
+  .chip{min-height:30px}
+}
+@media (orientation:landscape) and (max-height:400px){
+  .legend{display:none}
+  .meter.big .v{font-size:20px}
+  .meter .v{font-size:15px}
+}
+/* 아주 낮은 화면: 전류는 회로 속 전류계로 보고, 위 숫자 칸은 숨김 */
+@media (orientation:landscape) and (max-height:290px){
+  .meters{display:none}
+}
+/* SVG 회로 */
+.w{fill:none;stroke:var(--wire);stroke-width:7;stroke-linejoin:round;stroke-linecap:round}
+.tx{fill:var(--ink);font-family:var(--f-body)}
+.tm{fill:var(--muted);font-family:var(--f-body)}
+.mono{font-family:var(--f-mono);font-weight:600}
+/* 저항의 연결 실험실 전용 */
+.toggles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.chip.wide{grid-column:span 2}
+.chip.warn{border-color:var(--current);color:var(--current);font-weight:700}
+.chip.warn[aria-pressed="true"]{background:var(--current);border-color:var(--current);color:#fff}
+.chip{white-space:nowrap;padding-inline:4px}
+.ctl-head.sub2{font-size:14px;color:var(--muted);margin-top:2px}
+.ctl-head.sub2 output{font-size:16px}
+@media (orientation:landscape) and (max-height:520px){.ctl-head.sub2{font-size:12px}.ctl-head.sub2 output{font-size:13px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>저항의 연결 실험실</h1>
+      <p class="sub">전구를 직렬이나 병렬로 연결하고, 전구 수에 따라 전체 전류가 어떻게 달라지는지 관찰해 보세요.</p>
+    </div>
+    <div class="tools">
+    <div class="seg" role="group" aria-label="연결 방법">
+      <button id="mode-s" aria-pressed="true">직렬 연결</button>
+      <button id="mode-p" aria-pressed="false">병렬 연결</button>
+    </div>
+    <button class="fs" id="fsBtn" aria-pressed="false" aria-label="전체화면">
+      <svg class="ic-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      <svg class="ic-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+      <span class="lbl">전체화면</span>
+    </button>
+    </div>
+  </header>
+  <div class="rotate" role="note">휴대폰을 가로로 돌리면 회로와 조작 버튼이 한 화면에 모두 보여요.</div>
+
+  <div class="main">
+    <section class="stage" aria-label="전기 회로">
+      <svg id="circuit" viewBox="34 40 932 562" preserveAspectRatio="xMidYMid meet" role="img" aria-label="전지, 스위치, 전류계, 전구가 연결된 회로">
+        <defs>
+          <linearGradient id="cellBody" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#4b565a"/><stop offset=".45" stop-color="#2a3134"/><stop offset="1" stop-color="#15191b"/>
+          </linearGradient>
+          <linearGradient id="copperG" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#e6a05a"/><stop offset=".5" stop-color="#c97a2a"/><stop offset="1" stop-color="#8e5218"/>
+          </linearGradient>
+          <radialGradient id="glowG">
+            <stop offset="0" stop-color="#fff3b0" stop-opacity="1"/><stop offset=".45" stop-color="#ffd84a" stop-opacity=".55"/><stop offset="1" stop-color="#ffd84a" stop-opacity="0"/>
+          </radialGradient>
+          <g id="eSym"><circle r="7" fill="var(--electron)"/><line x1="-3.5" y1="0" x2="3.5" y2="0" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></g>
+        </defs>
+        <g id="gGlow"></g>
+        <g id="gWires"></g>
+        <g id="gElectrons"></g>
+        <g id="gParts"></g>
+        <g id="gArrows"></g>
+        <text x="960" y="597" text-anchor="end" font-size="17" class="tm" style="letter-spacing:.04em">성성중 2학년 과학</text>
+        <rect id="swHit" x="288" y="452" width="134" height="110" fill="transparent" style="cursor:pointer" role="button" aria-label="스위치 열고 닫기"></rect>
+      </svg>
+      <div class="legend">
+        <span><i class="dot">−</i> 전자 (− 극 → + 극 쪽으로 이동)</span>
+        <span id="lgI" hidden><b class="arr">➜</b> 전류의 방향 (+ 극 → − 극)</span>
+        <span>전자가 빠르게 움직일수록 그 전선의 전류가 세요</span>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="실험 조작">
+      <div class="meters">
+        <div class="meter big"><span class="k">전체 전류</span><span class="v" id="mI">0.45<small>A</small></span></div>
+        <div class="meter"><span class="k">전압</span><span class="v" id="mV">9.0<small>V</small></span></div>
+        <div class="meter"><span class="k">전체 저항</span><span class="v" id="mR">20<small>Ω</small></span></div>
+      </div>
+
+      <div class="ctl">
+        <div class="ctl-head"><b>전구 개수</b><output id="oN">2개</output></div>
+        <div class="row">
+          <button class="step" id="nMinus" aria-label="전구 하나 빼기">−</button>
+          <input type="range" id="sN" min="1" max="4" step="1" value="2" aria-label="전구 개수">
+          <button class="step" id="nPlus" aria-label="전구 하나 더하기">+</button>
+        </div>
+        <div class="ctl-head sub2"><span>전구 1개에 흐르는 전류</span><output id="oB">0.45 A</output></div>
+        <p class="hint" id="hN">전구를 한 줄로 이어서 연결했어요.</p>
+      </div>
+
+      <div class="toggles" role="group" aria-label="보기 설정">
+        <button class="chip wide warn" id="tBrk" aria-pressed="false">전구 1개 끊기</button>
+        <button class="chip" id="tSw" aria-pressed="false">스위치 끄기</button>
+        <button class="chip" id="tSym" aria-pressed="false">회로도 기호</button>
+        <button class="chip" id="tE" aria-pressed="true">전자 보기</button>
+        <button class="chip" id="tI" aria-pressed="false">전류 방향</button>
+      </div>
+    </aside>
+  </div>
+
+  <footer>전압 9 V (1.5 V 전지 6개) · 전구 1개의 저항 = 10 Ω · 전선, 스위치, 전류계의 저항은 무시합니다.</footer>
+</div>
+
+<script>
+(function(){
+const NS="http://www.w3.org/2000/svg";
+const $=id=>document.getElementById(id);
+const VOLT=9, RB=10, PX_PER_A=110, SPACING=38, Y_BOT=520, X_L=80, X_R=920, BX=500, TOP_S=240;
+const S={mode:"s",n:2,closed:true,broken:false,showE:true,showI:false,sym:false};
+
+// 끊은 전구: 직렬은 왼쪽 첫 번째, 병렬은 맨 위 갈래
+const brk=k=>S.broken&&k===0;
+function branchI(k){
+  if(!S.closed)return 0;
+  if(S.mode==="s")return S.broken?0:VOLT/(RB*S.n);
+  return brk(k)?0:VOLT/RB;
+}
+const bulbI=k=>S.mode==="s"?branchI(0):branchI(k);
+const Ib=()=>S.mode==="s"?branchI(0):(S.closed?VOLT/RB:0);   // 켜져 있는 전구 1개의 전류
+function It(){ if(S.mode==="s")return branchI(0); let t=0;for(let k=0;k<S.n;k++)t+=branchI(k);return t; }
+const upto=k=>{let t=0;for(let j=0;j<=k;j++)t+=branchI(j);return t;};
+// 끊어진 전구가 있으면: 직렬은 회로가 끊겨 값 없음, 병렬은 남은 전구만으로 계산
+function Rt(){
+  if(S.mode==="s")return S.broken?null:RB*S.n;
+  const m=S.n-(S.broken?1:0);return m>0?RB/m:null;
+}
+const fI=x=>x.toFixed(2);
+const fR=r=>Number.isInteger(r)?String(r):r.toFixed(1);
+
+/* ---------- 경로 ---------- */
+function buildPath(pts,closed,I){
+  const seg=[];let L=0;const m=closed?pts.length:pts.length-1;
+  for(let i=0;i<m;i++){const a=pts[i],b=pts[(i+1)%pts.length];const l=Math.hypot(b[0]-a[0],b[1]-a[1]);seg.push({a,b,l,s0:L});L+=l;}
+  const N=Math.max(1,Math.round(L/SPACING));
+  return {pts,closed,I,seg,L,N,sp:L/N,off:0,nodes:[]};
+}
+function pointAt(p,s){
+  s=((s%p.L)+p.L)%p.L;
+  for(const g of p.seg){if(s<=g.s0+g.l){const t=(s-g.s0)/g.l;return [g.a[0]+(g.b[0]-g.a[0])*t,g.a[1]+(g.b[1]-g.a[1])*t];}}
+  return p.pts[0];
+}
+function branchYs(){
+  const n=S.n;if(n===1)return [TOP_S];
+  const a=145,b=405,r=[];for(let k=0;k<n;k++)r.push(a+(b-a)*k/(n-1));return r;
+}
+function bulbScale(){ if(S.mode==="s"||S.n===1)return 1; return S.n===4?0.5:0.6; }
+function seriesCenters(){const n=S.n,a=200,b=880,w=(b-a)/n,c=[];for(let i=0;i<n;i++)c.push(a+w*(i+.5));return c;}
+// 전구를 지나는 전자 길(실물 보기에서만 필라멘트로 돌아감)
+function detour(cx,wy,s,dir){
+  if(S.sym)return [];
+  const loc=[[-44,0],[-17,-34],[-17,-94],[17,-94],[17,-34],[44,0]];
+  return loc.map(([x,y])=>[cx+dir*x*s,wy+y*s]);
+}
+let paths=[];
+function buildPaths(){
+  const it=It(),ib=Ib();paths=[];
+  if(S.mode==="s"){
+    const p=[[X_R,Y_BOT],[X_L,Y_BOT],[X_L,TOP_S]];
+    for(const cx of seriesCenters())p.push(...detour(cx,TOP_S,1,1));
+    p.push([X_R,TOP_S]);
+    paths.push(buildPath(p,true,it));
+    return;
+  }
+  const ys=branchYs(),n=S.n,yl=ys[n-1],s=bulbScale();
+  paths.push(buildPath([[X_R,yl],[X_R,Y_BOT],[X_L,Y_BOT],[X_L,yl]],false,it));
+  for(let k=n-2;k>=0;k--) paths.push(buildPath([[X_L,ys[k+1]],[X_L,ys[k]]],false,upto(k)));
+  for(let k=0;k<n;k++) paths.push(buildPath([[X_L,ys[k]],...detour(BX,ys[k],s,1),[X_R,ys[k]]],false,branchI(k)));
+  for(let k=0;k<n-1;k++) paths.push(buildPath([[X_R,ys[k]],[X_R,ys[k+1]]],false,upto(k)));
+}
+
+/* ---------- 그리기 도구 ---------- */
+function el(tag,attrs,parent,text){
+  const e=document.createElementNS(NS,tag);
+  for(const k in attrs)e.setAttribute(k,attrs[k]);
+  if(text!=null)e.textContent=text;
+  if(parent)parent.appendChild(e);return e;
+}
+const gGlow=$("gGlow"),gW=$("gWires"),gE=$("gElectrons"),gP=$("gParts"),gA=$("gArrows");
+let bulbEls=[],ammText=null;
+
+function brightness(I){const P=I*I*RB,Pmax=Math.pow(VOLT/RB,2)*RB;return P<=0?0:Math.pow(P/Pmax,.35);}
+function mix(a,b,t){return a.map((x,k)=>Math.round(x+(b[k]-x)*t)).join(",");}
+
+function drawBulb(cx,wy,s,k){
+  const broken=brk(k);
+  if(S.sym){
+    const glow=el("circle",{cx,cy:wy,r:40,fill:"url(#glowG)",opacity:0},gGlow);
+    el("circle",{cx,cy:wy,r:25,fill:"var(--bench)",stroke:"var(--wire)","stroke-width":4},gP);
+    const fill=el("circle",{cx,cy:wy,r:23,fill:"#ffd84a",opacity:0},gP);
+    if(broken){
+      el("path",{d:`M${cx-25} ${wy} L${cx-12} ${wy} C${cx-12} ${wy-14} ${cx-6} ${wy-17} ${cx-3} ${wy-15} M${cx+5} ${wy-12} C${cx+9} ${wy-14} ${cx+12} ${wy-8} ${cx+12} ${wy} L${cx+25} ${wy}`,fill:"none",stroke:"var(--wire)","stroke-width":3.5},gP);
+      brokenTag(cx,wy-36);
+    }else el("path",{d:`M${cx-25} ${wy} L${cx-12} ${wy} C${cx-12} ${wy-20} ${cx+12} ${wy-20} ${cx+12} ${wy} L${cx+25} ${wy}`,fill:"none",stroke:"var(--wire)","stroke-width":3.5},gP);
+    bulbEls.push({glow,fill,sym:true,k});
+    return;
+  }
+  const gg=el("g",{transform:`translate(${cx} ${wy}) scale(${s})`},gGlow);
+  const glow=el("circle",{cx:0,cy:-100,r:70,fill:"url(#glowG)",opacity:0},gg);
+  const g=el("g",{transform:`translate(${cx} ${wy}) scale(${s})`},gP);
+  el("path",{d:"M-20 -38 L-20 -56 C-40 -66 -56 -84 -56 -108 A56 56 0 1 1 56 -108 C56 -84 40 -66 20 -56 L20 -38 Z",fill:"var(--glass)",stroke:"var(--glass-edge)","stroke-width":2.5/s},g);
+  let d="M-17 -94";
+  if(broken){d+=" L-12 -100 L-8 -88 L-4 -97 M5 -84 L8 -96 L12 -88 L17 -94";}
+  else{for(let j=0;j<8;j++){d+=` L${-17+(j+.5)*34/8} ${j%2?-87:-101}`;}d+=" L17 -94";}
+  const fil=el("path",{d,fill:"none",stroke:"#5c5c5c","stroke-width":3,"stroke-linejoin":"round"},g);
+  el("rect",{x:-27,y:-40,width:54,height:40,rx:6,fill:"var(--metal-dark)"},g);
+  for(let k=0;k<3;k++)el("line",{x1:-27,y1:-30+k*10,x2:27,y2:-30+k*10,stroke:"var(--metal)","stroke-width":1.5},g);
+  bulbEls.push({glow,fil,sym:false,k});
+  if(broken){ if(S.mode==="s")brokenTag(cx,wy-178*s); else brokenTag(cx-60*s-58,wy-50*s); }
+}
+function brokenTag(x,y){
+  const g=el("g",{},gP);
+  el("rect",{x:x-36,y:y-17,width:72,height:28,rx:14,fill:"var(--current)"},g);
+  el("text",{x,y:y+3,"text-anchor":"middle","font-size":16,"font-weight":700,fill:"#fff"},g,"✕ 끊김");
+}
+function drawBattery(){
+  const cx=650;
+  if(S.sym){
+    el("rect",{x:641,y:488,width:18,height:64,fill:"var(--bench)"},gP);
+    el("line",{x1:641,y1:506,x2:641,y2:534,stroke:"var(--ink)","stroke-width":8},gP);
+    el("line",{x1:659,y1:490,x2:659,y2:550,stroke:"var(--ink)","stroke-width":4},gP);
+    el("text",{x:628,y:494,"text-anchor":"middle","font-size":22,"font-weight":700,class:"tm"},gP,"−");
+    el("text",{x:674,y:486,"text-anchor":"middle","font-size":22,"font-weight":700,fill:"var(--current)"},gP,"+");
+    el("text",{x:cx,y:580,"text-anchor":"middle","font-size":18,"font-weight":700,class:"tx"},gP,"전원 9 V");
+    return;
+  }
+  const n=6,cw=70,x0=cx-n*cw/2;
+  el("rect",{x:x0-12,y:488,width:n*cw+24,height:64,rx:14,fill:"var(--holder)",stroke:"var(--metal)","stroke-width":2},gP);
+  for(let i=0;i<n;i++){
+    const x=x0+i*cw;
+    el("rect",{x:x+3,y:500,width:58,height:40,rx:7,fill:"url(#cellBody)"},gP);
+    el("rect",{x:x+44,y:500,width:17,height:40,rx:7,fill:"url(#copperG)"},gP);
+    el("rect",{x:x+44,y:500,width:8,height:40,fill:"url(#copperG)"},gP);
+    el("rect",{x:x+61,y:512,width:6,height:16,rx:2,fill:"var(--metal)"},gP);
+    el("text",{x:x+24,y:525,"text-anchor":"middle",fill:"#fff","font-size":12,"font-weight":700,class:"mono"},gP,"1.5V");
+    el("text",{x:x+53,y:525,"text-anchor":"middle",fill:"#3a1d05","font-size":15,"font-weight":700},gP,"+");
+  }
+  el("text",{x:cx,y:476,"text-anchor":"middle","font-size":18,"font-weight":700,class:"tx"},gP,"1.5 V 전지 6개 = 9 V");
+  el("text",{x:x0+14,y:478,"text-anchor":"middle","font-size":15,class:"tm"},gP,"− 극");
+  el("text",{x:x0+n*cw-14,y:478,"text-anchor":"middle","font-size":15,class:"tm"},gP,"+ 극");
+}
+function drawAmmeter(){
+  const cx=190,cy=Y_BOT;
+  el("line",{x1:cx,y1:470,x2:cx,y2:cy-34,stroke:"var(--metal-dark)","stroke-width":3},gP);
+  el("circle",{cx,cy,r:32,fill:S.sym?"var(--bench)":"var(--surface)",stroke:S.sym?"var(--wire)":"var(--ink)","stroke-width":S.sym?4:3},gP);
+  el("text",{x:cx,y:cy+11,"text-anchor":"middle","font-size":30,"font-weight":700,class:"tx"},gP,"A");
+  el("text",{x:cx-44,y:cy-14,"text-anchor":"middle","font-size":20,"font-weight":700,fill:"var(--current)"},gP,"+");
+  el("text",{x:cx+44,y:cy-14,"text-anchor":"middle","font-size":22,"font-weight":700,class:"tm"},gP,"−");
+  el("rect",{x:cx-74,y:422,width:148,height:48,rx:10,fill:"var(--lcd)"},gP);
+  ammText=el("text",{x:cx,y:456,"text-anchor":"middle","font-size":28,fill:"var(--lcd-ink)",class:"mono"},gP,"");
+  el("text",{x:cx,y:580,"text-anchor":"middle","font-size":15,class:"tm"},gP,"전류계 (전체 전류)");
+}
+function drawSwitch(){
+  const x1=315,x2=395,y=Y_BOT;
+  if(S.sym){
+    el("rect",{x:x1+1,y:y-9,width:x2-x1-2,height:18,fill:"var(--bench)"},gP);
+    const ex=S.closed?x2:x1+62,ey=S.closed?y:y-40;
+    el("line",{x1,y1:y,x2:ex,y2:ey,stroke:"var(--ink)","stroke-width":4,"stroke-linecap":"round"},gP);
+    el("circle",{cx:x1,cy:y,r:6,fill:"var(--bench)",stroke:"var(--ink)","stroke-width":3},gP);
+    el("circle",{cx:x2,cy:y,r:6,fill:"var(--bench)",stroke:"var(--ink)","stroke-width":3},gP);
+  }else{
+    el("rect",{x:296,y:529,width:118,height:16,rx:6,fill:"var(--wood)",stroke:"var(--wood-edge)","stroke-width":2},gW);
+    if(S.closed){
+      el("line",{x1,y1:y,x2,y2:y,stroke:"var(--metal)","stroke-width":10,"stroke-linecap":"round"},gW);
+      el("line",{x1:x2-12,y1:y,x2:x2-12,y2:y-24,stroke:"var(--metal-dark)","stroke-width":5,"stroke-linecap":"round"},gW);
+      el("circle",{cx:x2-12,cy:y-28,r:8,fill:"var(--accent)"},gW);
+    }else{
+      el("rect",{x:x1+9,y:y-9,width:x2-x1-18,height:18,fill:"var(--bench)"},gP);
+      const ex=x1+80*Math.cos(-0.7),ey=y+80*Math.sin(-0.7);
+      el("line",{x1,y1:y,x2:ex,y2:ey,stroke:"var(--metal)","stroke-width":10,"stroke-linecap":"round"},gP);
+      el("circle",{cx:ex,cy:ey,r:9,fill:"var(--accent)"},gP);
+    }
+    el("circle",{cx:x1,cy:y,r:8,fill:"var(--metal-dark)"},gP);
+    el("circle",{cx:x2,cy:y,r:8,fill:"var(--metal-dark)"},gP);
+  }
+  el("text",{x:355,y:580,"text-anchor":"middle","font-size":15,class:"tm"},gP,S.closed?"스위치 (닫힘)":"스위치 (열림)");
+}
+function drawArrows(){
+  gA.innerHTML="";
+  if(!S.showI)return;
+  const put=(x,y,ang)=>{const gg=el("g",{transform:`translate(${x} ${y}) rotate(${ang})`},gA);
+    el("path",{d:"M-14 -13 L14 0 L-14 13 L-7 0 Z",fill:"var(--current)",stroke:"var(--surface)","stroke-width":2},gg);};
+  for(const p of paths){if(p.I<=0)continue;for(const g of p.seg){
+    const ang=Math.atan2(g.a[1]-g.b[1],g.a[0]-g.b[0])*180/Math.PI; // 전자와 반대 방향
+    if(g.a[1]===Y_BOT&&g.b[1]===Y_BOT){put(260,Y_BOT,ang);continue;}
+    if(g.l<70)continue;
+    const fr=g.l>500?[.12,.88]:[.5];
+    for(const f of fr)put(g.a[0]+(g.b[0]-g.a[0])*f,g.a[1]+(g.b[1]-g.a[1])*f,ang);
+  }}
+}
+function drawAll(){
+  gGlow.innerHTML=gW.innerHTML=gP.innerHTML=gE.innerHTML="";bulbEls=[];
+  buildPaths();
+  for(const p of paths){
+    const pts=p.closed?p.pts.concat([p.pts[0]]):p.pts;
+    el("polyline",{points:pts.map(q=>q.join(",")).join(" "),class:"w"},gW);
+  }
+  if(S.mode==="s"){
+    seriesCenters().forEach((cx,k)=>{drawBulb(cx,TOP_S,1,k);
+      el("text",{x:cx,y:TOP_S+(S.sym?52:28),"text-anchor":"middle","font-size":15,class:"tm mono"},gP,"10Ω");});
+    el("text",{x:500,y:330,"text-anchor":"middle","font-size":19,class:"tx"},gP,`전구 ${S.n}개 직렬 연결`);
+  }else{
+    const ys=branchYs(),s=bulbScale();
+    ys.forEach((y,k)=>{
+      drawBulb(BX,y,s,k);
+      el("text",{x:720,y:y-12,"text-anchor":"middle","font-size":18,fill:brk(k)?"var(--current)":"var(--accent)",class:"mono bl","data-k":k},gP,"");
+    });
+    for(let k=1;k<S.n;k++){el("circle",{cx:X_L,cy:ys[k],r:7,fill:"var(--wire)"},gP);el("circle",{cx:X_R,cy:ys[k],r:7,fill:"var(--wire)"},gP);}
+    el("text",{x:480,y:442,"text-anchor":"middle","font-size":19,class:"tx"},gP,`전구 ${S.n}개 병렬 연결`);
+  }
+  drawSwitch();drawBattery();drawAmmeter();drawArrows();
+  for(const p of paths){for(let i=0;i<p.N;i++)p.nodes.push(el("use",{href:"#eSym"},gE));}
+  update();
+}
+
+/* ---------- 숫자 표시 ---------- */
+function update(){
+  const it=It(),ib=Ib(),r=Rt();
+  $("mI").innerHTML=`${fI(it)}<small>A</small>`;
+  $("mV").innerHTML=`9.0<small>V</small>`;
+  $("mR").innerHTML=r===null?`—`:`${fR(r)}<small>Ω</small>`;
+  $("oN").textContent=`${S.n}개`;
+  $("oB").textContent=`${fI(ib)} A`;
+  $("hN").textContent=S.broken?(S.mode==="s"?"왼쪽 첫 번째 전구의 연결을 끊었어요.":"맨 위 갈래 전구의 연결을 끊었어요."):(S.mode==="s"?"전구를 한 줄로 이어서 연결했어요.":"전구를 여러 갈래로 나누어 연결했어요.");
+  if(ammText)ammText.textContent=`${fI(it)} A`;
+  document.querySelectorAll(".bl").forEach(t=>t.textContent=`${fI(branchI(+t.dataset.k))} A`);
+  for(const e of bulbEls){
+    const b=brightness(bulbI(e.k));
+    e.glow.setAttribute("opacity",Math.min(1,b*1.15).toFixed(3));
+    if(e.sym){e.fill.setAttribute("opacity",(b*.85).toFixed(3));e.glow.setAttribute("r",(30+30*b).toFixed(1));}
+    else{e.glow.setAttribute("r",(60+70*b).toFixed(1));e.fil.setAttribute("stroke",`rgb(${mix([92,92,92],[255,236,140],Math.min(1,b*1.6))})`);}
+  }
+  const bk=$("tBrk");bk.textContent=S.broken?"끊은 전구 다시 연결":"전구 1개 끊기";bk.setAttribute("aria-pressed",S.broken);
+  const sw=$("tSw");sw.textContent=S.closed?"스위치 끄기":"스위치 켜기";sw.setAttribute("aria-pressed",!S.closed);
+}
+
+/* ---------- 움직임 ---------- */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  for(const p of paths){
+    p.off+=p.I*PX_PER_A*dt;
+    for(let k=0;k<p.N;k++){const q=pointAt(p,p.off+k*p.sp);p.nodes[k].setAttribute("x",q[0].toFixed(1));p.nodes[k].setAttribute("y",q[1].toFixed(1));}
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- 조작 ---------- */
+const sN=$("sN");
+function setN(n){S.n=Math.max(1,Math.min(4,n));sN.value=S.n;drawAll();}
+sN.addEventListener("input",()=>setN(+sN.value));
+$("nMinus").onclick=()=>setN(S.n-1);
+$("nPlus").onclick=()=>setN(S.n+1);
+function setMode(m){S.mode=m;$("mode-s").setAttribute("aria-pressed",m==="s");$("mode-p").setAttribute("aria-pressed",m==="p");drawAll();}
+$("mode-s").onclick=()=>setMode("s");
+$("mode-p").onclick=()=>setMode("p");
+function toggleSwitch(){S.closed=!S.closed;drawAll();}
+$("tSw").onclick=toggleSwitch;
+$("tBrk").onclick=()=>{S.broken=!S.broken;drawAll();};
+$("swHit").addEventListener("click",toggleSwitch);
+$("tSym").onclick=()=>{S.sym=!S.sym;$("tSym").setAttribute("aria-pressed",S.sym);drawAll();};
+$("tE").onclick=()=>{S.showE=!S.showE;$("tE").setAttribute("aria-pressed",S.showE);gE.style.display=S.showE?"":"none";};
+$("tI").onclick=()=>{S.showI=!S.showI;$("tI").setAttribute("aria-pressed",S.showI);$("lgI").hidden=!S.showI;drawArrows();};
+
+drawAll();
+
+/* ---------- 전체화면 ---------- */
+const fsBtn=$("fsBtn"),root=document.documentElement;
+const isIOS=/iPhone|iPod/.test(navigator.userAgent);
+const standalone=window.navigator.standalone===true||window.matchMedia("(display-mode: standalone)").matches;
+if(standalone)fsBtn.hidden=true;
+const fsEl=()=>document.fullscreenElement||document.webkitFullscreenElement;
+function toast(msg){
+  let t=document.querySelector(".toast");
+  if(!t){t=document.createElement("div");t.className="toast";t.setAttribute("role","status");document.body.appendChild(t);}
+  t.textContent=msg;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>{t.hidden=true;},4000);
+}
+function syncFs(){const on=!!fsEl();fsBtn.setAttribute("aria-pressed",on);fsBtn.setAttribute("aria-label",on?"전체화면 끝내기":"전체화면");}
+fsBtn.addEventListener("click",async()=>{
+  try{
+    if(fsEl()){await (document.exitFullscreen?document.exitFullscreen():document.webkitExitFullscreen());return;}
+    const req=root.requestFullscreen||root.webkitRequestFullscreen;
+    if(!req)throw new Error("unsupported");
+    await req.call(root);
+    try{await screen.orientation.lock("landscape");}catch(e){}
+  }catch(e){
+    toast(isIOS?"아이폰에서는 전체화면 버튼이 동작하지 않아요. 주소창의 ‘가가’ → ‘툴바 가리기’를 눌러 보세요.":"이 기기에서는 전체화면을 지원하지 않아요. 크롬·사파리 브라우저에서 열어 보세요.");
+  }
+});
+document.addEventListener("fullscreenchange",syncFs);
+document.addEventListener("webkitfullscreenchange",syncFs);
+requestAnimationFrame(t=>{last=t;requestAnimationFrame(frame);});
+})();
+</script>
+
+</body>
+</html>
